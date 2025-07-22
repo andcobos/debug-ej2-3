@@ -4,27 +4,49 @@ import { Product } from './product.entity';
 import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { CreateProductDto } from './dto/create-product.dto';
 
 @Injectable()
 export class ProductService {
   constructor(
     @InjectRepository(Product)
-    private productRepo: Repository<Product>,
+    private readonly productRepo: Repository<Product>,
     @Inject(CACHE_MANAGER)
-    private cacheManager: Cache,
+    private readonly cacheManager: Cache,
   ) {}
 
-  async findAll() {
+  async create(createProductDto: CreateProductDto): Promise<Product> {
+    const product = this.productRepo.create(createProductDto);
+    const savedProduct = await this.productRepo.save(product);
+    
+    await this.cacheManager.del('products_all');
+    console.log('Cache cleared after creating new product');
+    
+    return savedProduct;
+  }
+
+  async findAll(): Promise<Product[]> {
     const cacheKey = 'products_all';
-    const cached = await this.cacheManager.get(cacheKey);
-    console.log('Cache:', cached);
-    if (cached) {
-      console.log('Desde cache');
-      return cached;
+    
+    try {
+      const cached = await this.cacheManager.get<Product[]>(cacheKey);
+      if (cached) {
+        console.log('Data retrieved from cache');
+        return cached;
+      }
+    } catch (error) {
+      console.log('Cache error:', error);
     }
-    console.log('Desde DB');
+    
+    console.log('Data retrieved from database');
     const data = await this.productRepo.find();
-    await this.cacheManager.set(cacheKey, data, 30);
+    
+    try {
+      await this.cacheManager.set(cacheKey, data, 30000);
+    } catch (error) {
+      console.log('Error setting cache:', error);
+    }
+
     return data;
   }
 }
