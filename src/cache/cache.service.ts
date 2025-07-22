@@ -9,8 +9,8 @@ export class CacheConfigService implements CacheOptionsFactory {
       store: redisStore,
       host: 'localhost',
       port: 6379,
-      ttl: 30000, // 30 seconds in milliseconds
-      max: 100, // maximum number of items in cache
+      ttl: 30000, 
+      max: 100, 
     };
   }
 }
